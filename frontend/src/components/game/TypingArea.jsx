@@ -311,7 +311,7 @@ const TypingArea = () => {
       </div>
 
       {/* MODE BUTTONS - Same as HomePage */}
-      <div className="w-full max-w-4xl px-8 mt-8">
+      <div className="relative z-50 w-full max-w-4xl px-8 mt-8" style={{ pointerEvents: 'auto', position: 'relative' }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Practice Mode */}
           <div
