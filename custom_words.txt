@@ -1,0 +1,38 @@
+# Custom Word List Example
+# Lines starting with # are comments and will be ignored
+
+# Programming terms
+algorithm
+function
+variable
+parameter
+exception
+interface
+inheritance
+polymorphism
+encapsulation
+abstraction
+
+# Advanced words
+sophisticated
+extraordinary
+magnificent
+revolutionary
+unprecedented
+comprehensive
+fundamental
+characteristic
+simultaneously
+infrastructure
+
+# Technical terms
+database
+framework
+architecture
+deployment
+optimization
+configuration
+authentication
+authorization
+synchronization
+serialization

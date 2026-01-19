@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Game - MonkeyType Style</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Mode Selection Menu -->
+    <div id="modeMenu" class="mode-menu">
+        <div class="logo">
+            <h1>⌨️ typing<span class="accent">game</span></h1>
+            <p class="tagline">test your typing speed</p>
+        </div>
+
+        <div class="mode-grid">
+            <div class="mode-card" onclick="selectMode('PRACTICE')">
+                <div class="mode-icon">📝</div>
+                <h2>Practice</h2>
+                <p>Solo typing practice with no pressure</p>
+                <div class="mode-stats">
+                    <span>✓ Unlimited time</span>
+                    <span>✓ Track WPM & accuracy</span>
+                </div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('VS_BOT')">
+                <div class="mode-icon">🤖</div>
+                <h2>Vs Bot</h2>
+                <p>Race against AI opponent</p>
+                <div class="mode-stats">
+                    <span>✓ Adjustable difficulty</span>
+                    <span>✓ 60 WPM bot</span>
+                </div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('VS_FRIEND')">
+                <div class="mode-icon">👥</div>
+                <h2>Vs Friend</h2>
+                <p>Classic multiplayer race</p>
+                <div class="mode-stats">
+                    <span>✓ Real-time sync</span>
+                    <span>✓ First to finish wins</span>
+                </div>
+            </div>
+
+            <div class="mode-card elimination" onclick="selectMode('ELIMINATION')">
+                <div class="mode-icon">💀</div>
+                <h2>Elimination</h2>
+                <p>3 lives - wrong words cost health</p>
+                <div class="mode-stats">
+                    <span>❤️ 3 hearts per player</span>
+                    <span>⚔️ Survive to win</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-info">
+            <p>Press <kbd>Tab</kbd> + <kbd>Enter</kbd> to restart • <kbd>Esc</kbd> to return to menu</p>
+        </div>
+    </div>
+
+    <!-- Game Area (Hidden Initially) -->
+    <div id="gameArea" class="game-area hidden">
+        <div class="game-header">
+            <div class="mode-badge" id="currentMode">Practice Mode</div>
+            <button class="btn-back" onclick="returnToMenu()">← Back to Menu</button>
+        </div>
+
+        <!-- Player Stats -->
+        <div class="stats-container">
+            <div class="player-stats">
+                <div class="stat-label">YOU</div>
+                <div class="lives" id="myLives">
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                </div>
+                <div class="stats">
+                    <span>WPM: <strong id="myWPM">0</strong></span>
+                    <span>ACC: <strong id="myAccuracy">100</strong>%</span>
+                </div>
+            </div>
+
+            <div class="timer" id="timer">0:00</div>
+
+            <div class="player-stats opponent-stats">
+                <div class="stat-label">OPPONENT</div>
+                <div class="lives" id="opponentLives">
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                </div>
+                <div class="stats">
+                    <span>WPM: <strong id="opponentWPM">0</strong></span>
+                    <span>ACC: <strong id="opponentAccuracy">100</strong>%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Words Display -->
+        <div class="words-container">
+            <div class="words" id="words"></div>
+        </div>
+
+        <!-- Input -->
+        <div class="input-container">
+            <input type="text" id="typingInput" class="typing-input" placeholder="Start typing..." autocomplete="off"
+                autocorrect="off" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span id="statusText">Ready</span>
+        </div>
+    </div>
+
+    <!-- Overlays -->
+    <div class="overlay" id="eliminatedOverlay">
+        <div class="overlay-content eliminated">
+            <h1>💀 ELIMINATED 💀</h1>
+            <p>You ran out of lives!</p>
+            <button class="btn" onclick="returnToMenu()">Back to Menu</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="victoryOverlay">
+        <div class="overlay-content victory">
+            <h1>🎉 VICTORY 🎉</h1>
+            <p>Opponent eliminated!</p>
+            <div class="final-stats">
+                <p>Your WPM: <span id="finalWPM">0</span></p>
+                <p>Your Accuracy: <span id="finalAccuracy">0</span>%</p>
+            </div>
+            <button class="btn" onclick="returnToMenu()">Back to Menu</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="gameEndOverlay">
+        <div class="overlay-content">
+            <h1 id="gameEndTitle">Game Over</h1>
+            <p id="gameEndMessage"></p>
+            <div class="final-stats">
+                <p>Your WPM: <span id="endWPM">0</span></p>
+                <p>Your Accuracy: <span id="endAccuracy">0</span>%</p>
+            </div>
+            <button class="btn" onclick="returnToMenu()">Back to Menu</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
