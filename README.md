@@ -356,7 +356,8 @@ This project is created for educational purposes as part of an Advanced Object-O
 
 ## 👥 Authors
 
-- **Your Name** - *Initial work*
+- Rasak Ahmed  - Frontend
+- Abrar Jahin - Backend
 
 ---
 
@@ -366,14 +367,6 @@ This project is created for educational purposes as part of an Advanced Object-O
 - Spring Boot Documentation
 - React Documentation
 - Tailwind CSS
-
----
-
-## 📞 Support
-
-For issues and questions:
-- Create an issue in the repository
-- Contact: your.email@example.com
 
 ---
 
