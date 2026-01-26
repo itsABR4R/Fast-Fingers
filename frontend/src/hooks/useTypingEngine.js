@@ -319,14 +319,8 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
                     // Count characters from current position to end of word as missed
                     const missedCount = wordBoundary.end - currentIndex;
 
-                    // Mark these characters as missed in charStates
-                    setCharStates(prevStates => {
-                        const newStates = [...prevStates];
-                        for (let i = currentIndex; i < wordBoundary.end; i++) {
-                            newStates[i] = 'incorrect'; // Visual feedback
-                        }
-                        return newStates;
-                    });
+                    // Don't change visual state - keep as 'waiting' to avoid red highlighting
+                    // The missed count is tracked in stats only
 
                     // Update stats - add to missed count
                     setCharStats(prevStats => ({
@@ -415,11 +409,14 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
         });
     }, [phase, characters, currentCharIndex, isCodeMode, indentJumpStack, userInput]);
 
-    // WPM Calculator with history tracking (every 1 second)
+    // WPM Calculator with history tracking (more responsive updates)
     useEffect(() => {
         if (phase === "typing" && startTime) {
             const interval = setInterval(() => {
-                const timeElapsed = (Date.now() - startTime) / 60000;
+                const timeElapsed = (Date.now() - startTime) / 60000; // in minutes
+
+                // Only calculate if at least 0.5 seconds have passed to avoid division issues
+                if (timeElapsed < 0.0083) return; // 0.0083 minutes = 0.5 seconds
 
                 // Net WPM: (Correct Chars / 5) / Time
                 // Considers only correct characters as useful work
@@ -433,11 +430,16 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
 
                 setWpm(currentNetWpm);
                 setRawWpm(currentRawWpm);
-                setWpmHistory(prev => [...prev, currentNetWpm]);
-            }, 1000); // 1 second interval for chart data points
+
+                // Only add to history every second for chart (to avoid too many data points)
+                const secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
+                if (wpmHistory.length < secondsElapsed) {
+                    setWpmHistory(prev => [...prev, currentNetWpm]);
+                }
+            }, 200); // Update every 200ms for smoother, more responsive display
             return () => clearInterval(interval);
         }
-    }, [userInput, startTime, phase, charStats, totalTyped]);
+    }, [userInput, startTime, phase, charStats, totalTyped, wpmHistory.length]);
 
     // Timer countdown for time mode (1-second intervals)
     // Skip countdown if testValue = 0 (infinite mode)
@@ -466,7 +468,26 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
         if (phase === "finished") {
             const saveStats = async () => {
                 try {
+                    // Get current user from localStorage
+                    const userStr = localStorage.getItem('user');
+                    let username = null;
+                    let userId = null;
+
+                    if (userStr) {
+                        try {
+                            const user = JSON.parse(userStr);
+                            if (user && !user.isGuest) {
+                                username = user.username;
+                                userId = user.id;
+                            }
+                        } catch (e) {
+                            console.error("Error parsing user data:", e);
+                        }
+                    }
+
                     const statsData = {
+                        username: username,
+                        userId: userId,
                         mode: isCodeMode ? "CODE" : "PRACTICE",
                         wpm: wpm,
                         rawWpm: rawWpm,
@@ -474,11 +495,11 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
                         wordsTyped: Math.round(charStats.correct / 5),
                         duration: Date.now() - startTime,
                         characters: charStats,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        isWin: false // Can be updated for multiplayer
                     };
 
-                    // Import API service dynamically or assume it's available via fetch
-                    // Using fetch here to avoid dependency issues within hook or passed arg
+                    // Send to backend
                     await fetch('http://localhost:8080/api/scores', {
                         method: 'POST',
                         headers: {
@@ -486,7 +507,12 @@ const useTypingEngine = (textToType, isCodeMode = false, testType = 'time', test
                         },
                         body: JSON.stringify(statsData)
                     });
-                    console.log("Stats saved to backend scores.dat");
+
+                    if (username) {
+                        console.log(`Stats saved to MongoDB for user: ${username}`);
+                    } else {
+                        console.log("Guest stats not saved to MongoDB");
+                    }
                 } catch (error) {
                     console.error("Failed to save stats:", error);
                 }

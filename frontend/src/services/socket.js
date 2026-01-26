@@ -1,7 +1,8 @@
 import { Client } from '@stomp/stompjs';
 
 // The URL must match your Spring Boot Endpoint (defined in WebSocketConfig.java)
-const SOCKET_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/fastfingers-ws';
+// Use native WebSocket endpoint by default (Spring config provides /fastfingers-ws-native)
+const SOCKET_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/fastfingers-ws-native';
 
 export const createStompClient = (onConnect, onError) => {
   const client = new Client({

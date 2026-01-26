@@ -1,11 +1,15 @@
 package com.typinggame.api;
 
+import com.typinggame.domain.GameRecord;
+import com.typinggame.domain.User;
 import com.typinggame.domain.Word;
 import com.typinggame.engine.PerformanceTracker;
 import com.typinggame.engine.TypingEngine;
 import com.typinggame.io.CodeSnippetLoader;
 import com.typinggame.io.ScoreManager;
 import com.typinggame.io.UserStats;
+import com.typinggame.repository.GameRecordRepository;
+import com.typinggame.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,14 +35,19 @@ public class TypingController {
     private final PerformanceTracker performanceTracker;
     private final CodeSnippetLoader snippetLoader;
     private final ScoreManager scoreManager;
+    private final UserRepository userRepository;
+    private final GameRecordRepository gameRecordRepository;
 
     @Autowired
     public TypingController(TypingEngine typingEngine, PerformanceTracker performanceTracker,
-            CodeSnippetLoader snippetLoader, ScoreManager scoreManager) {
+            CodeSnippetLoader snippetLoader, ScoreManager scoreManager,
+            UserRepository userRepository, GameRecordRepository gameRecordRepository) {
         this.typingEngine = typingEngine;
         this.performanceTracker = performanceTracker;
         this.snippetLoader = snippetLoader;
         this.scoreManager = scoreManager;
+        this.userRepository = userRepository;
+        this.gameRecordRepository = gameRecordRepository;
     }
 
     /**
@@ -240,46 +250,61 @@ public class TypingController {
     }
 
     /**
-     * POST /api/scores - Save game score using ObjectOutputStream (Req 3).
+     * POST /api/scores - Save game score to MongoDB.
      */
     @PostMapping("/scores")
     public ResponseEntity<Map<String, Object>> saveScore(@RequestBody Map<String, Object> scoreData) {
         try {
-            String username = (String) scoreData.getOrDefault("username", "Anonymous");
+            String username = (String) scoreData.get("username");
+            String userId = (String) scoreData.get("userId");
             String mode = (String) scoreData.getOrDefault("mode", "PRACTICE");
             Double wpm = ((Number) scoreData.getOrDefault("wpm", 0.0)).doubleValue();
             Double accuracy = ((Number) scoreData.getOrDefault("accuracy", 100.0)).doubleValue();
             Integer wordsTyped = ((Number) scoreData.getOrDefault("wordsTyped", 0)).intValue();
             Long duration = ((Number) scoreData.getOrDefault("duration", 0L)).longValue();
+            Boolean isWin = (Boolean) scoreData.getOrDefault("isWin", false);
 
-            // Load existing stats or create new
-            UserStats stats;
-            try {
-                stats = scoreManager.loadStats();
-                if (stats == null || !stats.getUsername().equals(username)) {
-                    stats = new UserStats(username);
-                }
-            } catch (Exception e) {
-                stats = new UserStats(username);
+            // Guest mode - don't save to MongoDB
+            if (username == null || username.equals("Guest") || userId == null) {
+                System.out.println("[TypingController] Guest score not saved to MongoDB");
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Guest score not saved",
+                        "isGuest", true));
             }
 
-            // Add game record
-            stats.addGameRecord(wpm, accuracy, wordsTyped, duration, mode);
+            // Save to MongoDB for authenticated users
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
 
-            // Save using ObjectOutputStream (Req 3)
-            scoreManager.saveStats(stats);
+                // Update user statistics
+                user.updateStats(wpm, isWin);
+                userRepository.save(user);
 
-            System.out.println("[TypingController] Saved score for " + username +
-                    ": " + wpm + " WPM, " + accuracy + "% accuracy");
+                // Create and save game record
+                GameRecord gameRecord = new GameRecord(userId, username, wpm, accuracy,
+                        wordsTyped, mode, duration);
+                gameRecordRepository.save(gameRecord);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Score saved successfully",
-                    "bestWPM", stats.getBestWPM(),
-                    "averageWPM", stats.getAverageWPM()));
+                System.out.println("[TypingController] Saved score to MongoDB for " + username +
+                        ": " + wpm + " WPM, " + accuracy + "% accuracy");
+
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Score saved successfully",
+                        "bestWPM", user.getBestWPM(),
+                        "averageWPM", user.getAvgWPM()));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of(
+                                "success", false,
+                                "message", "User not found"));
+            }
 
         } catch (Exception e) {
             System.err.println("[TypingController] Error saving score: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
                             "success", false,

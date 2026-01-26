@@ -25,10 +25,14 @@ public class WebSocketSessionManager {
     // Queue for buffering words to prevent lag (Req 2)
     private final ConcurrentHashMap<String, Queue<String>> wordQueues;
 
+    // Per-room state (started/text/winner)
+    private final ConcurrentHashMap<String, RoomState> roomStates;
+
     public WebSocketSessionManager() {
         this.sessionMap = new ConcurrentHashMap<>();
         this.roomPlayers = new ConcurrentHashMap<>();
         this.wordQueues = new ConcurrentHashMap<>();
+        this.roomStates = new ConcurrentHashMap<>();
     }
 
     /**
@@ -42,6 +46,9 @@ public class WebSocketSessionManager {
         players.put(username, playerInfo);
 
         System.out.println("[WebSocketSessionManager] Player " + username + " joined room " + roomId);
+
+        // Ensure room state exists
+        roomStates.putIfAbsent(roomId, new RoomState());
     }
 
     /**
@@ -54,8 +61,47 @@ public class WebSocketSessionManager {
             if (players.isEmpty()) {
                 roomPlayers.remove(roomId);
                 wordQueues.remove(roomId);
+                roomStates.remove(roomId);
             }
         }
+    }
+
+    public RoomState getRoomState(String roomId) {
+        roomStates.putIfAbsent(roomId, new RoomState());
+        return roomStates.get(roomId);
+    }
+
+    public synchronized void markRoomStarted(String roomId, String text) {
+        RoomState state = getRoomState(roomId);
+        if (!state.started) {
+            state.started = true;
+            state.text = text;
+            state.startTimestamp = System.currentTimeMillis();
+        }
+    }
+
+    public boolean isRoomStarted(String roomId) {
+        return getRoomState(roomId).started;
+    }
+
+    public String getRoomText(String roomId) {
+        return getRoomState(roomId).text;
+    }
+
+    /**
+     * Set winner only if none exists.
+     * @return winner username after attempt.
+     */
+    public synchronized String setWinnerIfAbsent(String roomId, String winnerUsername) {
+        RoomState state = getRoomState(roomId);
+        if (state.winner == null) {
+            state.winner = winnerUsername;
+        }
+        return state.winner;
+    }
+
+    public String getWinner(String roomId) {
+        return getRoomState(roomId).winner;
     }
 
     /**
@@ -118,6 +164,16 @@ public class WebSocketSessionManager {
     public boolean hasPlayers(String roomId) {
         ConcurrentHashMap<String, PlayerInfo> players = roomPlayers.get(roomId);
         return players != null && !players.isEmpty();
+    }
+
+    /**
+     * Internal per-room state.
+     */
+    public static class RoomState {
+        public boolean started = false;
+        public String text = null;
+        public long startTimestamp = 0L;
+        public String winner = null;
     }
 
     /**

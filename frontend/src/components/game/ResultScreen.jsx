@@ -102,20 +102,11 @@ const ResultScreen = ({
                                         color: '#d1d0c5'
                                     }}
                                 />
-                                {/* Raw WPM - Yellow Line */}
-                                <Line
-                                    type="monotone"
-                                    dataKey="raw"
-                                    stroke="#e2b714"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    name="Raw"
-                                />
-                                {/* WPM - Gray Line */}
+                                {/* WPM Line - Yellow */}
                                 <Line
                                     type="monotone"
                                     dataKey="wpm"
-                                    stroke="#646669"
+                                    stroke="#e2b714"
                                     strokeWidth={2}
                                     dot={false}
                                     name="WPM"
@@ -137,24 +128,12 @@ const ResultScreen = ({
                         label="restart test"
                         onClick={onRestart}
                     />
-                    <ActionButton
-                        icon="⚙"
-                        label="settings"
-                        onClick={onSettings}
-                    />
-                </div>
-
-                {/* Keyboard Shortcuts */}
-                <div className="flex gap-6 text-sm text-gray-500">
-                    <div>
-                        <span className="bg-gray-800 px-2 py-1 rounded border border-gray-700">Tab</span> - next test
-                    </div>{' • '}
-                    <span className="bg-gray-800 px-2 py-1 rounded border border-gray-700">Enter</span> - restart
                 </div>
             </div>
 
             {/* CSS Animation */}
-            <style jsx>{`
+            {/* Plain <style> (the `jsx` attribute is a Next.js thing, not React) */}
+            <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

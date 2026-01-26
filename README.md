@@ -31,7 +31,7 @@ A feature-rich, MonkeyType-inspired typing game built with **Spring Boot** (back
 - **Time Mode**: Race against the clock (15s/30s/60s/∞)
 - **Code Mode**: Practice typing Java code snippets
 - **Multiplayer Mode**: Real-time competitive typing with WebSocket
-- **Battle Royale**: Elimination-based multiplayer (coming soon)
+
 
 ### Advanced Features
 - **Real-time WPM & Accuracy Tracking**: Live statistics with visual graphs

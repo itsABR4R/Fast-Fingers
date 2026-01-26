@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
-import TypingArea from '../components/game/TypingArea';
+import React, { useState, useEffect } from 'react';
+import MultiplayerArea from '../components/game/MultiplayerArea';
 import ProgressBar from '../components/game/ProgressBar';
 import useGameSocket from '../hooks/useGameSocket';
+import authService from '../services/authService';
 
 const GameRoom = () => {
-  const [roomId] = useState("room_1"); 
-  const [username] = useState("Player_" + Math.floor(Math.random() * 1000));
+  const [roomId] = useState("room_1");
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    // Get username from auth service
+    const currentUser = authService.getCurrentUser();
+    if (currentUser && !currentUser.isGuest) {
+      // Use actual username for logged-in users
+      setUsername(currentUser.username);
+    } else {
+      // Generate random name for guests
+      setUsername("Guest_" + Math.floor(Math.random() * 1000));
+    }
+  }, []);
+
   // Removed messages/sendChat from destructuring
-  const { isConnected, players } = useGameSocket(roomId, username);
+  const { isConnected, players, startText, winner, sendProgress, sendFinish } = useGameSocket(roomId, username);
 
   return (
     <main className="flex-1 flex flex-col items-center p-6 h-[calc(100vh-80px)] overflow-hidden">
-      
+
       <div className="w-full max-w-[1800px] h-full flex flex-col gap-4">
-        
+
         {/* TOP SECTION: Status & Progress */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between px-4">
@@ -28,11 +42,19 @@ const GameRoom = () => {
 
         {/* BOTTOM SECTION: Full Width Arena */}
         <div className="flex-1 grid grid-cols-12 gap-0 min-h-0 mt-2">
-          
+
           {/* CENTER: Typing Area - Now takes full 12 columns */}
           <div className="col-span-12 flex items-center justify-center relative p-8 border border-white/5 bg-black/20 rounded-2xl">
             <div className="w-full">
-              <TypingArea /> 
+              <MultiplayerArea
+                username={username}
+                roomId={roomId}
+                players={players}
+                startText={startText}
+                winner={winner}
+                sendProgress={sendProgress}
+                sendFinish={sendFinish}
+              />
             </div>
           </div>
 

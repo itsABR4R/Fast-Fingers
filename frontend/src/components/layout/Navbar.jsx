@@ -1,13 +1,14 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import authService from "../../services/authService";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem("token");
+  const isLoggedIn = authService.isAuthenticated() && !authService.isGuest();
 
   const handleAuthAction = () => {
     if (isLoggedIn) {
-      navigate("/profile"); // <--- NOW NAVIGATES TO PROFILE
+      navigate("/profile");
     } else {
       navigate("/login");
     }
@@ -34,13 +35,11 @@ const Navbar = () => {
         <Link to="/room" className="hover:text-gray-100 transition flex items-center gap-2 group">
           <span className="text-blue-400 group-hover:text-blue-300">👥</span> multiplayer
         </Link>
-        <Link to="/battle-royale" className="hover:text-gray-100 transition flex items-center gap-2 group">
-          <span className="text-red-400 group-hover:text-red-300">⚔</span> battle-royale
-        </Link>
+
       </div>
 
       {/* User Icon */}
-      <div 
+      <div
         onClick={handleAuthAction}
         className="cursor-pointer text-gray-400 hover:text-yellow-400 transition duration-300 p-2 rounded-full hover:bg-white/5"
         title={isLoggedIn ? "My Profile" : "Login"}

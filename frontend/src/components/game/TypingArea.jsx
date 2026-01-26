@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import authService from '../../services/authService';
 import useTypingEngine from "../../hooks/useTypingEngine";
 import useGameConfig from "../../hooks/useGameConfig";
 import ResultScreen from "./ResultScreen";
@@ -7,11 +8,45 @@ import ModeToolbar from "./ModeToolbar";
 import api from "../../services/api";
 import { clsx } from "clsx";
 
+// Keep it simple: store only the last completed run per mode.
+const ghostStorageKey = (isCodeMode) => (isCodeMode ? "ff_ghost_last_code" : "ff_ghost_last_practice");
+
+// Binary search: return the last timeline point with t <= elapsedMs.
+const ghostIndexAt = (timeline, elapsedMs) => {
+  if (!timeline || timeline.length === 0) return 0;
+  if (elapsedMs <= timeline[0].t) return timeline[0].i;
+  const last = timeline[timeline.length - 1];
+  if (elapsedMs >= last.t) return last.i;
+
+  let lo = 0;
+  let hi = timeline.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (timeline[mid].t <= elapsedMs) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return timeline[Math.max(0, hi)].i;
+};
+
 const TypingArea = () => {
   const [textToType, setTextToType] = useState("Loading...");
   const [isFocused, setIsFocused] = useState(false);
   const [searchParams] = useSearchParams();
   const [cursorPosition, setCursorPosition] = useState({ left: 0, top: 0 });
+
+  // Ghost caret (replay of your previous run, shown on restart)
+  const [ghostActive, setGhostActive] = useState(false);
+  const [ghostIndex, setGhostIndex] = useState(0);
+  const [ghostCursorPosition, setGhostCursorPosition] = useState({ left: 0, top: 0, visible: false });
+
+  const lastRunRef = useRef(null);           // last completed run (this session / localStorage)
+  const recordStartRef = useRef(null);       // performance.now() at start of typing
+  const recordTimelineRef = useRef([]);      // [{t,i}] - ms since start, caret index
+
+  const ghostRunRef = useRef(null);          // run data currently being replayed
+  const ghostStartRef = useRef(null);        // performance.now() when replay starts
+  const ghostRafRef = useRef(null);
+  const ghostLastIdxRef = useRef(-1);
 
   const navigate = useNavigate();
   const isCodeMode = searchParams.get("mode") === "code";
@@ -46,9 +81,141 @@ const TypingArea = () => {
   const charRefs = useRef([]);
   const containerRef = useRef(null);
 
+  // Helpers to manage ghost state (no popups, no ceremony)
+  const clearGhost = () => {
+    setGhostActive(false);
+    setGhostIndex(0);
+    setGhostCursorPosition({ left: 0, top: 0, visible: false });
+    ghostRunRef.current = null;
+    ghostStartRef.current = null;
+    ghostLastIdxRef.current = -1;
+    if (ghostRafRef.current) {
+      cancelAnimationFrame(ghostRafRef.current);
+      ghostRafRef.current = null;
+    }
+  };
+
+  const armGhostFromLastRun = () => {
+    const run = lastRunRef.current;
+    if (!run) return;
+    if (run.isCodeMode !== isCodeMode) return;
+    if (run.text !== textToType) return;
+    if (!Array.isArray(run.timeline) || run.timeline.length === 0) return;
+
+    ghostRunRef.current = run;
+    setGhostIndex(0);
+    setGhostActive(true);
+  };
+
+  // Load last run (if any). We don't autoplay it, we just keep it around for restart.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ghostStorageKey(isCodeMode));
+      if (raw) lastRunRef.current = JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+  }, [isCodeMode]);
+
   useEffect(() => {
     fetchNewSnippet();
   }, [searchParams]);
+
+  // Track and store your last run timeline (for ghost replay)
+  useEffect(() => {
+    if (phase === 'start') {
+      recordStartRef.current = null;
+      recordTimelineRef.current = [];
+      // Don't clearGhost here: restart should keep ghostActive armed.
+      ghostStartRef.current = null;
+      ghostLastIdxRef.current = -1;
+      if (ghostRafRef.current) {
+        cancelAnimationFrame(ghostRafRef.current);
+        ghostRafRef.current = null;
+      }
+      setGhostIndex(0);
+      return;
+    }
+
+    if (phase === 'typing' && recordStartRef.current == null) {
+      recordStartRef.current = performance.now();
+      recordTimelineRef.current = [{ t: 0, i: 0 }];
+    }
+
+    if (phase === 'finished') {
+      // Save last completed run for this mode so restart can replay it.
+      const timeline = recordTimelineRef.current;
+      if (timeline && timeline.length > 0) {
+        const runData = {
+          text: textToType,
+          isCodeMode,
+          testType,
+          testValue,
+          timeline,
+          finishedAt: Date.now()
+        };
+
+        lastRunRef.current = runData;
+        try {
+          localStorage.setItem(ghostStorageKey(isCodeMode), JSON.stringify(runData));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [phase, isCodeMode, testType, testValue, textToType]);
+
+  // Append timeline points as the caret moves (includes backspace)
+  useEffect(() => {
+    if (phase !== 'typing') return;
+    if (recordStartRef.current == null) return;
+
+    const t = Math.max(0, performance.now() - recordStartRef.current);
+    const timeline = recordTimelineRef.current;
+    const last = timeline[timeline.length - 1];
+
+    if (!last || last.i !== currentCharIndex) {
+      timeline.push({ t: Math.round(t), i: currentCharIndex });
+    }
+  }, [currentCharIndex, phase]);
+
+  // Ghost replay: start ticking when the new run actually starts typing
+  useEffect(() => {
+    if (!ghostActive) return;
+    if (!ghostRunRef.current) return;
+    if (phase !== 'typing') return;
+
+    const timeline = ghostRunRef.current.timeline || [];
+    if (timeline.length === 0) return;
+
+    ghostStartRef.current = performance.now();
+    ghostLastIdxRef.current = -1;
+
+    const lastT = timeline[timeline.length - 1].t;
+
+    const tick = () => {
+      const elapsed = performance.now() - ghostStartRef.current;
+      const idx = ghostIndexAt(timeline, elapsed);
+
+      if (idx !== ghostLastIdxRef.current) {
+        ghostLastIdxRef.current = idx;
+        setGhostIndex(idx);
+      }
+
+      if (elapsed <= lastT && phase === 'typing') {
+        ghostRafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    ghostRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (ghostRafRef.current) {
+        cancelAnimationFrame(ghostRafRef.current);
+        ghostRafRef.current = null;
+      }
+    };
+  }, [ghostActive, phase, textToType]);
 
   // Update cursor position when currentCharIndex changes
   useEffect(() => {
@@ -68,8 +235,44 @@ const TypingArea = () => {
     }
   }, [currentCharIndex, textToType]);
 
+  // Update ghost cursor position when ghostIndex changes
+  useEffect(() => {
+    if (!ghostActive || !containerRef.current) {
+      setGhostCursorPosition({ left: 0, top: 0, visible: false });
+      return;
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const el = charRefs.current[ghostIndex];
+
+    // If index is past the end, park it after the last character
+    if (!el) {
+      const lastEl = charRefs.current[charRefs.current.length - 1];
+      if (!lastEl) {
+        setGhostCursorPosition({ left: 0, top: 0, visible: false });
+        return;
+      }
+      const lastRect = lastEl.getBoundingClientRect();
+      setGhostCursorPosition({
+        left: lastRect.right - containerRect.left,
+        top: lastRect.top - containerRect.top,
+        visible: true
+      });
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    setGhostCursorPosition({
+      left: rect.left - containerRect.left,
+      top: rect.top - containerRect.top,
+      visible: true
+    });
+  }, [ghostIndex, ghostActive, textToType]);
+
   const fetchNewSnippet = async () => {
     try {
+      // New text = new run. Don't drag an old ghost across a different test.
+      clearGhost();
       if (isCodeMode) {
         const response = await api.get("/game/text?lang=java");
         setTextToType(response.data);
@@ -82,6 +285,7 @@ const TypingArea = () => {
       resetEngine();
       focusInput();
     } catch (error) {
+      clearGhost();
       if (isCodeMode) {
         setTextToType(`public class FastFingers {\n  public static void main(String[] args) {\n    System.out.println("Server Offline");\n  }\n}`);
       } else {
@@ -96,17 +300,21 @@ const TypingArea = () => {
     fetchNewSnippet();
   }, [testType, testValue]);
 
-  const focusInput = () => {
+  function focusInput() {
     setIsFocused(true);
     focusedInputRef.current?.focus();
-  };
+  }
 
-  const handleBlur = () => { setIsFocused(false); };
+  function handleBlur() {
+    setIsFocused(false);
+  }
 
   const handleGlobalKeys = (e) => {
     // Tab to restart
     if (e.key === 'Tab') {
       e.preventDefault();
+      // Tab is "next test" behavior here; don't replay ghost across different text.
+      clearGhost();
       resetEngine();
       resetConfig();
       fetchNewSnippet();
@@ -126,6 +334,20 @@ const TypingArea = () => {
     }
   };
 
+  // Result screen actions
+  const handleRestartTest = () => {
+    // Arm ghost replay from the just-finished run, then reset.
+    armGhostFromLastRun();
+    resetEngine();
+    // React can be... slow to put focus back unless we nudge it.
+    setTimeout(() => focusInput(), 0);
+  };
+
+  const handleNextTest = () => {
+    clearGhost();
+    fetchNewSnippet();
+  };
+
   // Show ResultScreen when test is finished
   if (phase === 'finished') {
     return (
@@ -137,8 +359,8 @@ const TypingArea = () => {
         language={isCodeMode ? "java" : "english"}
         characters={charStats}
         wpmHistory={wpmHistory}
-        onNextTest={fetchNewSnippet}
-        onRestart={resetEngine}
+        onNextTest={handleNextTest}
+        onRestart={handleRestartTest}
         onSettings={() => navigate('/')}
       />
     );
@@ -215,6 +437,25 @@ const TypingArea = () => {
             { "blur-[4px] opacity-40": !isFocused && phase !== 'finished' }
           )}
         >
+          {/* Ghost caret: replay of your previous run (appears after you finish and restart) */}
+          {ghostActive && ghostCursorPosition.visible && phase !== 'finished' && (
+            <div
+              className="absolute z-5 pointer-events-none"
+              style={{
+                left: `${ghostCursorPosition.left}px`,
+                top: `${ghostCursorPosition.top}px`,
+                height: '2rem',
+                transition: 'left 0.08s linear, top 0.08s linear',
+                opacity: 0.6
+              }}
+            >
+              <div className="h-8 border-l-2 border-blue-300" />
+              <div className="absolute -top-6 -left-2 text-xs text-blue-200 bg-gray-800/80 px-1 rounded font-mono">
+                ghost
+              </div>
+            </div>
+          )}
+
           {/* Smooth Cursor with Diagonal Glide */}
           {phase !== 'finished' && (
             <div
@@ -312,7 +553,7 @@ const TypingArea = () => {
 
       {/* MODE BUTTONS - Same as HomePage */}
       <div className="relative z-50 w-full max-w-4xl px-8 mt-8" style={{ pointerEvents: 'auto', position: 'relative' }}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {/* Practice Mode */}
           <div
             onClick={() => navigate('/')}
@@ -334,41 +575,26 @@ const TypingArea = () => {
           {/* Multiplayer */}
           <div
             onClick={() => {
-              const isLoggedIn = !!localStorage.getItem("token");
+              const isLoggedIn = authService.isAuthenticated() && !authService.isGuest();
               navigate(isLoggedIn ? '/room' : '/login');
             }}
             className="relative group cursor-pointer bg-[#2c2e31] hover:bg-[#323437] border border-transparent hover:border-blue-500/50 rounded-xl p-4 transition-all duration-300 ease-out flex flex-col items-center justify-center gap-2 w-full h-24 overflow-hidden"
           >
             <div className="text-2xl text-blue-400 group-hover:scale-110 transition duration-300">👥</div>
             <div className="text-xs font-bold text-gray-400 group-hover:text-gray-200 uppercase tracking-widest">MULTIPLAYER</div>
-            {!localStorage.getItem("token") && (
+            {!(authService.isAuthenticated() && !authService.isGuest()) && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <span className="text-xs font-mono text-gray-300 bg-black/80 px-2 py-1 rounded">Login Required</span>
               </div>
             )}
           </div>
 
-          {/* Battle Royale */}
-          <div
-            onClick={() => {
-              const isLoggedIn = !!localStorage.getItem("token");
-              navigate(isLoggedIn ? '/battle-royale' : '/login');
-            }}
-            className="relative group cursor-pointer bg-[#2c2e31] hover:bg-[#323437] border border-transparent hover:border-red-500/50 rounded-xl p-4 transition-all duration-300 ease-out flex flex-col items-center justify-center gap-2 w-full h-24 overflow-hidden"
-          >
-            <div className="text-2xl text-red-400 group-hover:scale-110 transition duration-300">⚔</div>
-            <div className="text-xs font-bold text-gray-400 group-hover:text-gray-200 uppercase tracking-widest">BATTLE ROYALE</div>
-            {!localStorage.getItem("token") && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <span className="text-xs font-mono text-gray-300 bg-black/80 px-2 py-1 rounded">Login Required</span>
-              </div>
-            )}
-          </div>
+
         </div>
       </div>
 
-      {/* CSS for shake animation */}
-      <style jsx>{`
+      {/* CSS for shake animation (plain <style>; "jsx" attribute triggers React warning) */}
+      <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-2px); }

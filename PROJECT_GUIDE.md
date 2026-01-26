@@ -1,1038 +1,956 @@
 # FastFingers - Complete Project Guide
 
-> **A MonkeyType-inspired competitive typing platform demonstrating Advanced Object-Oriented Programming concepts**
+> **A modern typing game with user accounts, multiplayer racing, and real-time statistics**
 
 ---
 
 ## 📖 Table of Contents
 
-1. [Project Overview](#1-project-overview)
-2. [Core Features & Mechanics](#2-core-features--mechanics)
-3. [AOOP Requirement Implementation](#3-aoop-requirement-implementation)
-4. [Data Flow & Statistics](#4-data-flow--statistics)
+1. [What is FastFingers?](#1-what-is-fastfingers)
+2. [Key Features](#2-key-features)
+3. [How It Works](#3-how-it-works)
+4. [Technical Architecture](#4-technical-architecture)
 5. [Setup & Running](#5-setup--running)
 
 ---
 
-## 1. Project Overview
+## 1. What is FastFingers?
 
-### 1.1 High-Level Description
+FastFingers is a **typing speed game** where you can:
+- Practice typing to improve your speed and accuracy
+- Create an account to track your progress over time
+- Race against other players in real-time multiplayer mode
+- Type code snippets to practice programming
+- View detailed statistics and game history
 
-**FastFingers** is a full-stack competitive typing platform that combines the engaging gameplay of MonkeyType with robust backend architecture. The application provides multiple typing modes (Practice, Code, Multiplayer) with real-time performance tracking, character-level feedback, and persistent statistics.
-
-### 1.2 Tech Stack Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      FRONTEND LAYER                         │
-│  React 18 + Vite + Tailwind CSS + Recharts                 │
-│  - Character-level typing engine (useTypingEngine.js)      │
-│  - Real-time WPM/Accuracy calculation                      │
-│  - Smooth animations & visual feedback                     │
-└─────────────────────────────────────────────────────────────┘
-                              ↕ HTTP/WebSocket
-┌─────────────────────────────────────────────────────────────┐
-│                      BACKEND LAYER                          │
-│  Spring Boot 3.2 + Java 17                                 │
-│  - REST API (TypingController.java)                        │
-│  - WebSocket (GameWebSocketController.java)                │
-│  - File I/O (ScoreManager.java, CodeSnippetLoader.java)    │
-└─────────────────────────────────────────────────────────────┘
-                              ↕ Java Sockets
-┌─────────────────────────────────────────────────────────────┐
-│                   MULTIPLAYER LAYER                         │
-│  Java Socket Server (GameServer.java)                      │
-│  - ClientHandler threads (one per player)                  │
-│  - GameSession threads (match management)                  │
-│  - Real-time progress broadcasting                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Key Technologies:**
-- **Spring Boot**: RESTful APIs, WebSocket support, dependency injection
-- **React (Vite)**: Fast development, hot module replacement
-- **Tailwind CSS**: Utility-first styling, responsive design
-- **Java Sockets**: Low-level multiplayer networking
-- **WebSocket**: Browser-compatible real-time communication
+Think of it like a racing game, but instead of driving, you're typing!
 
 ---
 
-## 2. Core Features & Mechanics
+## 2. Key Features
 
-### 2.1 Typing Engine Architecture
+### 🎮 Game Modes
 
-The typing engine (`useTypingEngine.js`) is the heart of the application, implementing character-level tracking with precise state management.
+#### Practice Mode (Time-Based)
+- Choose how long you want to type: **15, 30, 60 seconds, or unlimited**
+- Type random words as fast as you can
+- See your WPM (Words Per Minute) update in real-time
+- Get instant feedback on mistakes (red = wrong, white = correct)
 
-#### Character State Machine
+#### Practice Mode (Word-Based)
+- Choose how many words to type: **10, 25, 50, or 100 words**
+- Perfect for quick practice sessions
+- Game ends when you finish all the words
 
-```javascript
-// Three possible states for each character
-'waiting'    → Character not yet typed
-'correct'    → Character typed correctly
-'incorrect'  → Character typed incorrectly
+#### Code Mode
+- Practice typing real code snippets (Java, Python, JavaScript)
+- **Smart indentation**: When you press Enter, the cursor automatically jumps to the right position
+- **Newline enforcement**: You must press Enter to go to the next line (just like real coding!)
+- Great for programmers who want to improve their coding speed
+
+#### Multiplayer Mode (Race Track)
+- Race against other players in real-time
+- See **ghost carets** showing where other players are typing
+- First person to finish wins! 🏆
+- Your username appears on the race track
+- Guests get random names like "Guest_742"
+
+### 👤 User Accounts & Profiles
+
+#### Sign Up & Login
+- Create an account with username, email, and password
+- Or play as a **guest** without creating an account
+- Simple and fast authentication
+
+#### User Profile Page
+Shows your typing statistics:
+- **Average WPM**: Your typical typing speed
+- **Best WPM**: Your personal record
+- **Total Games**: How many games you've played
+- **Total Wins**: How many multiplayer races you've won
+- **Game History**: See your last 20 games with details (date, mode, WPM, accuracy)
+
+#### Guest Mode
+- Click "Continue as Guest" to play without an account
+- Your scores won't be saved to the database
+- Perfect for trying out the game
+
+### 📊 Real-Time Statistics
+
+#### Live WPM Counter
+- Updates **every 200 milliseconds** (super fast!)
+- Starts calculating after just **0.5 seconds** of typing
+- Shows your current typing speed as you type
+
+#### Accuracy Tracking
+- Shows percentage of correct characters
+- Formula: `(Correct Characters / Total Typed) × 100%`
+- Updates in real-time
+
+#### Character Feedback
+- **White text** = Typed correctly ✓
+- **Red text** = Typed incorrectly ✗
+- **Gray text** = Not typed yet
+- Skipped words are counted as "missed" but don't turn red
+
+#### Performance Graph
+- See your WPM over time in a line chart
+- Yellow line shows your speed throughout the test
+- Helps you see if you're getting faster or slower
+
+### 🏁 Multiplayer Features
+
+#### Real-Time Racing
+- Connect to a game room (e.g., "room_1")
+- Wait for 2+ players to join
+- Everyone types the same text
+- See other players' progress in real-time
+
+#### Ghost Carets
+- **What they are**: Visual indicators showing where other players are typing
+- Each player has a different colored ghost caret
+- Shows their username above the caret
+- Moves as they type, so you can see who's ahead
+
+#### Race Progress Bar
+- Top of the screen shows all players
+- Your name is highlighted
+- Progress bars show how far everyone has typed
+- Updates smoothly as you race
+
+#### Winner Announcement
+- First player to finish wins
+- Winner's name displayed with a trophy 🏆
+- Your final WPM and accuracy shown
+- Option to practice again in the same room
+
+### 💾 Data Persistence (MongoDB)
+
+#### What Gets Saved
+When you complete a game while logged in:
+- Your WPM and accuracy
+- Number of words typed
+- Game mode (Practice, Code, or Multiplayer)
+- Whether you won (for multiplayer)
+- Timestamp of when you played
+
+#### Automatic Stats Updates
+- **Best WPM**: Automatically updated if you beat your record
+- **Average WPM**: Calculated across all your games
+- **Total Games**: Increments with each game
+- **Total Wins**: Increments when you win multiplayer races
+
+#### Game History
+- Last 20 games are saved
+- Shows: Date, Mode, WPM, Accuracy, Words Typed
+- Sorted by most recent first
+
+### 🎨 User Interface Features
+
+#### Responsive Design
+- Works on desktop and laptop screens
+- Clean, modern dark theme
+- Smooth animations and transitions
+
+#### Visual Feedback
+- Typing cursor blinks in yellow
+- Smooth cursor movement as you type
+- Blur effect when not focused (click to focus)
+- Loading skeletons while data loads
+
+#### Navigation
+- **Home**: Main typing area
+- **Practice**: Same as home
+- **Code Mode**: Programming practice
+- **Multiplayer**: Race against others
+- **Profile**: View your stats (click user icon)
+- **Login/Logout**: Top right corner
+
+#### Result Screen
+After completing a test, you see:
+- Large WPM and Accuracy display
+- Test type (e.g., "time 15")
+- Character breakdown (correct/incorrect/missed)
+- Consistency percentage
+- Performance graph
+- Buttons: "Next Test" and "Restart Test"
+
+---
+
+## 3. How It Works
+
+### The Typing Engine
+
+#### Character-by-Character Tracking
+Every letter you type is tracked individually:
+1. You press a key
+2. The system checks if it matches the expected character
+3. The character is marked as correct (white) or incorrect (red)
+4. Statistics are updated (correct count, incorrect count, total typed)
+5. WPM is recalculated
+
+#### Smart Backspace
+When you press backspace:
+- The last character is removed
+- Its state resets to "not typed yet" (gray)
+- Statistics are updated (decrements correct/incorrect count)
+- In code mode, backspace after auto-indent removes the entire indent at once
+
+#### Word Skipping (Practice Mode)
+If you press **Space** before finishing a word:
+- Remaining characters in that word are counted as "missed"
+- The word doesn't turn red (just tracked in stats)
+- You move on to the next word
+- Accuracy is affected by missed characters
+
+### WPM Calculation
+
+#### Formula
+```
+WPM = (Correct Characters ÷ 5) ÷ Time in Minutes
 ```
 
-#### Stack-Based Backspace Logic (AOOP Req 2)
+**Why divide by 5?**
+- Standard typing measurement: 1 word = 5 characters
+- Example: "hello" = 5 characters = 1 word
 
-The engine uses a **Stack** data structure (`typedCharStack`) to enable intelligent backspace functionality:
+#### Example
+- You type 250 correct characters in 60 seconds (1 minute)
+- WPM = (250 ÷ 5) ÷ 1 = **50 WPM**
 
-```javascript
-// Stack structure for each typed character
-{
-  type: 'correct' | 'incorrect' | 'missed',
-  char: 'a',
-  count: 1  // For missed characters (multiple chars skipped)
-}
+#### Real-Time Updates
+- Calculated every 200ms (5 times per second)
+- Minimum 0.5 seconds before showing a value
+- Updates smoothly as you type
+
+### Accuracy Calculation
+
+#### Formula
+```
+Accuracy = (Correct Characters ÷ Total Typed) × 100%
 ```
 
-**Backspace Behavior:**
-1. Pop from `typedCharStack`
-2. Decrement appropriate stat counter (`correct`, `incorrect`, or `missed`)
-3. Reset character state to `'waiting'`
-4. Decrement `totalTyped` counter
+#### Example
+- Correct: 250 characters
+- Total typed: 300 characters (includes 50 mistakes)
+- Accuracy = (250 ÷ 300) × 100 = **83.3%**
 
-**Special Case - Auto-Indent Backspace:**
-```javascript
-// In code mode, pressing backspace after auto-indent jump
-// undoes the ENTIRE indent at once (not character-by-character)
-if (indentJumpStack.length > 0) {
-  const lastJump = indentJumpStack[indentJumpStack.length - 1];
-  const jumpCount = lastJump.count;
-  // Delete all jumped characters in one operation
-  const newInput = prev.slice(0, -jumpCount);
-}
-```
+### Code Mode Mechanics
 
-#### Character Classification Logic
+#### Auto-Indentation
+When typing code, indentation is handled automatically:
 
-**1. Correct Characters:**
-```javascript
-const isCorrect = key === expectedChar;
-if (isCorrect) {
-  charStats.correct++;
-  charStates[currentIndex] = 'correct';
-}
-```
-
-**2. Incorrect Characters:**
-```javascript
-if (!isCorrect) {
-  charStats.incorrect++;
-  charStates[currentIndex] = 'incorrect';
-}
-```
-
-**3. Missed Characters (Practice Mode Only):**
-
-Missed characters occur when a user presses **Space** before completing a word:
-
-```javascript
-// User presses space at position 3 in "hello"
-// Expected: "hello"
-// Typed:    "hel "
-// Result:   "lo" are marked as MISSED (2 characters)
-
-if (key === ' ' && expectedChar !== ' ') {
-  const wordBoundary = getCurrentWordBoundary(currentIndex);
-  const missedCount = wordBoundary.end - currentIndex;
-  
-  charStats.missed += missedCount;
-  // Mark remaining word characters as 'incorrect' visually
-  for (let i = currentIndex; i < wordBoundary.end; i++) {
-    charStates[i] = 'incorrect';
-  }
-}
-```
-
-**4. Extra Characters (Typing Beyond Text):**
-```javascript
-// User types more characters than the provided text
-if (currentIndex >= characters.length) {
-  charStats.extra++;
-  // Still counted in totalTyped for raw WPM calculation
-}
-```
-
-### 2.2 Game Modes
-
-#### Mode 1: Timer Mode (Interrupt-Driven)
-
-**Mechanism:** Background thread counts down from selected time (15/30/60 seconds or ∞)
-
-```javascript
-// Timer countdown effect (1-second intervals)
-useEffect(() => {
-  if (testType === 'time' && phase === 'typing' && timeRemaining > 0 && testValue > 0) {
-    const timerInterval = setInterval(() => {
-      setTimeRemaining(prev => {
-        const newTime = prev - 1;
-        
-        // INTERRUPT: End game when time runs out
-        if (newTime <= 0) {
-          setPhase('finished');
-          return 0;
-        }
-        
-        return newTime;
-      });
-    }, 1000);
-    
-    return () => clearInterval(timerInterval);
-  }
-}, [testType, phase, timeRemaining, testValue]);
-```
-
-**Completion Trigger:** Timer reaches 0 → `setPhase('finished')`
-
-**Infinite Mode (∞):**
-- `testValue = 0` signals infinite mode
-- Timer countdown is skipped: `testValue > 0` check prevents countdown
-- Game continues until manually stopped with Tab key
-
-#### Mode 2: Word Mode (Index-Driven)
-
-**Mechanism:** Tracks word completion count, ends when target reached
-
-```javascript
-// Word count completion logic
-if (testType === 'words') {
-  const completedWords = nextInput.trim().split(/\s+/).filter(w => w.length > 0).length;
-  
-  // Completion triggers:
-  // 1. Typed all characters
-  if (nextInput.length >= characters.length) {
-    setPhase('finished');
-  }
-  // 2. Completed target word count
-  else if (completedWords >= testValue && key === ' ') {
-    setPhase('finished');
-  }
-}
-```
-
-**Completion Trigger:** `activeWordIndex >= testValue` OR all characters typed
-
-**Word Count Options:** 10, 25, 50, 100 words
-
-### 2.3 Code Mode - Indentation Preservation
-
-Code mode introduces special handling for programming snippets with proper indentation.
-
-#### Auto-Jump Logic
-
-When the user presses **Enter** after a newline, the system automatically jumps over indentation spaces:
-
-```javascript
-// User presses Enter at end of line
-if (key === "Enter" && expectedChar === '\n') {
-  // 1. Type the newline character
-  const nextInput = prev + '\n';
-  
-  // 2. Calculate next line's indentation
-  const indentCount = getNextLineIndentation(currentIndex);
-  // Example: "    public void foo()" has 4 leading spaces
-  
-  if (indentCount > 0) {
-    // 3. Auto-skip indentation characters
-    const indentChars = characters.slice(
-      currentIndex + 1, 
-      currentIndex + 1 + indentCount
-    ).join('');
-    
-    // 4. Mark indentation as 'correct' (pre-filled)
-    for (let i = 0; i < indentCount; i++) {
-      charStates[currentIndex + 1 + i] = 'correct';
+**Example:**
+```java
+public class Example {
+    public void hello() {
+        System.out.println("Hi");
     }
-    
-    // 5. Push to indentJumpStack for backspace handling (AOOP Req 2)
-    setIndentJumpStack(prevStack => [
-      ...prevStack, 
-      { type: 'indent', count: indentCount }
-    ]);
-    
-    // 6. Return input with newline + indentation
-    return nextInput + indentChars;
-  }
 }
 ```
 
-**Visual Effect:** Cursor jumps from end of line directly to first non-whitespace character of next line
+**What happens:**
+1. You type `public class Example {`
+2. Press **Enter**
+3. Cursor automatically jumps to the correct indentation (4 spaces)
+4. You start typing `public void hello()` immediately
+5. No need to manually type the spaces!
 
-**Backspace Behavior:** Pressing backspace after auto-jump removes entire indentation at once
+**Backspace behavior:**
+- Press backspace → removes all 4 spaces at once
+- Returns cursor to the previous line
 
 #### Newline Enforcement
+- When a newline is expected, you **must** press Enter
+- Typing regular characters won't work
+- This mimics real coding behavior
 
-In code mode, users **MUST** press Enter to advance to the next line:
+### Multiplayer Mechanics
 
-```javascript
-// Prevent typing regular characters when newline is expected
-if (isCodeMode && expectedChar === '\n' && key !== '\n') {
-  // Mark as incorrect but don't advance
-  charStates[currentIndex] = 'incorrect';
-  return prev; // Don't add to input
-}
+#### How a Race Works
+
+**Step 1: Joining**
+- You navigate to `/room` (multiplayer page)
+- Connect to a room (e.g., "room_1")
+- Your username is sent to the server
+
+**Step 2: Waiting**
+- Screen shows "Waiting for players..."
+- Need at least 2 players to start
+- Tip: Open another browser tab to test with yourself!
+
+**Step 3: Race Start**
+- Server sends the same text to all players
+- Everyone sees: "3... 2... 1... GO!"
+- Race begins!
+
+**Step 4: Racing**
+- You type as fast as you can
+- Your progress is sent to the server every 150ms
+- Server broadcasts your progress to other players
+- You see their ghost carets moving
+
+**Step 5: Finish**
+- First player to complete the text wins
+- Winner announcement appears
+- Your score is saved to MongoDB (if logged in)
+
+#### Ghost Caret System
+
+**What you see:**
 ```
+[Your Cursor] ← Yellow blinking cursor (you)
+[Player_123] ← Blue ghost caret (opponent)
+[Guest_456] ← Green ghost caret (another opponent)
+```
+
+**How it works:**
+1. Each player's progress percentage is sent to the server
+2. Server broadcasts to all players
+3. Your browser calculates where to show each ghost caret
+4. Ghost carets move smoothly as players type
+5. Username appears above each ghost caret
+
+**Visual Design:**
+- Different color for each player
+- Semi-transparent so you can see the text
+- Smooth animation when moving
+- Shows player name on hover
+
+### Authentication Flow
+
+#### Sign Up
+1. Click user icon → "Sign Up" tab
+2. Enter username, email, password
+3. Frontend sends to `POST /api/auth/signup`
+4. Backend checks if username/email already exists
+5. If unique, creates new user in MongoDB
+6. User data saved to localStorage
+7. Redirected to home page
+
+#### Login
+1. Click user icon → "Login" tab
+2. Enter username and password
+3. Frontend sends to `POST /api/auth/login`
+4. Backend checks credentials (plain text comparison)
+5. If correct, returns user data
+6. User data saved to localStorage
+7. Redirected to home page
+
+#### Guest Mode
+1. Click "Continue as Guest"
+2. Sets `isGuest: true` in localStorage
+3. Redirected to home page
+4. Can play games, but stats won't save
+
+#### Logout
+1. Go to profile page
+2. Click "Logout" button
+3. User data cleared from localStorage
+4. Redirected to home page
+
+### Score Saving
+
+#### Practice/Code Mode
+When you finish a game:
+1. Frontend gets user from localStorage
+2. If logged in (not guest):
+   - Sends score to `POST /api/scores`
+   - Includes: username, userId, mode, WPM, accuracy, etc.
+   - Backend saves to MongoDB
+   - User stats automatically updated
+3. If guest:
+   - Score not saved
+   - Console logs "Guest stats not saved"
+
+#### Multiplayer Mode
+When race finishes:
+1. Frontend checks if you won
+2. If logged in:
+   - Sends score with `mode: "MULTIPLAYER"`
+   - Includes `isWin: true/false`
+   - Backend saves to MongoDB
+   - Win count updated if you won
+3. If guest:
+   - Score not saved
 
 ---
 
-## 3. AOOP Requirement Implementation
+## 4. Technical Architecture
 
-### 3.1 Collections Framework (Requirement 2)
+### Frontend (React + Vite)
 
-#### ArrayList - Word Bank Storage
+#### Main Technologies
+- **React 18**: UI framework
+- **Vite**: Fast build tool and dev server
+- **Tailwind CSS**: Styling
+- **Recharts**: Performance graphs
+- **React Router**: Page navigation
 
-**Location:** `TypingEngine.java`
+#### Key Components
 
+**TypingArea.jsx**
+- Main typing interface
+- Handles keyboard input
+- Displays text with character states
+- Shows WPM, accuracy, timer
+- Renders result screen when done
+
+**MultiplayerArea.jsx**
+- Multiplayer typing interface
+- Connects to WebSocket
+- Shows ghost carets for other players
+- Displays progress bars
+- Handles race logic
+
+**ResultScreen.jsx**
+- Shows final statistics
+- Displays performance graph
+- Buttons for next test / restart
+- Calculates consistency percentage
+
+**ProfilePage.jsx**
+- Fetches user data from backend
+- Displays statistics cards
+- Shows game history table
+- Logout button
+
+**Login.jsx**
+- Sign up and login forms
+- Form validation
+- Guest mode button
+- Error handling
+
+**Navbar.jsx**
+- Navigation links
+- User icon (goes to profile if logged in)
+- Responsive design
+
+#### Custom Hooks
+
+**useTypingEngine.js**
+- Core typing logic
+- Character state management
+- WPM calculation (every 200ms)
+- Timer countdown
+- Backspace handling with stack
+- Auto-indent logic for code mode
+- Score saving when finished
+
+**useGameSocket.js**
+- WebSocket connection management
+- Sends/receives multiplayer messages
+- Handles player updates
+- Winner detection
+
+**useGameConfig.js**
+- Manages game settings
+- Test type (time/words)
+- Test value (duration/count)
+- Language selection
+
+#### Services
+
+**authService.js**
+- `signup(username, email, password)` - Create account
+- `login(username, password)` - Authenticate
+- `logout()` - Clear session
+- `getCurrentUser()` - Get logged-in user
+- `isAuthenticated()` - Check if logged in
+- `isGuest()` - Check if guest mode
+- `setGuestMode()` - Enable guest mode
+
+**api.js**
+- Axios instance for API calls
+- Base URL: `http://localhost:8080/api`
+- Handles HTTP requests
+
+### Backend (Spring Boot + MongoDB)
+
+#### Main Technologies
+- **Spring Boot 3.2**: Backend framework
+- **Java 17**: Programming language
+- **MongoDB**: NoSQL database
+- **Spring Data MongoDB**: Database integration
+- **WebSocket**: Real-time communication
+
+#### Domain Models
+
+**User.java**
 ```java
-public class TypingEngine {
-    // AOOP Req 2: ArrayList for word bank storage
-    private final ArrayList<Word> wordBank;
-    
-    public TypingEngine() {
-        this.wordBank = new ArrayList<>();
-        loadWordsFromFile();
-    }
-    
-    /**
-     * Get random words using Collections.shuffle() and subList()
-     * AOOP Requirement 2: Demonstrates ArrayList usage with Collections framework
-     */
-    public List<Word> getRandomWords(int count) {
-        // Create copy to preserve original order
-        ArrayList<Word> shuffledWords = new ArrayList<>(wordBank);
-        
-        // Randomize using Collections.shuffle() (AOOP Req 2)
-        Collections.shuffle(shuffledWords);
-        
-        // Extract exact count using subList() (AOOP Req 2)
-        List<Word> selectedWords = new ArrayList<>(
-            shuffledWords.subList(0, Math.min(count, wordBank.size()))
-        );
-        
-        return selectedWords;
-    }
-}
-```
-
-**Usage Flow:**
-1. Frontend requests: `GET /api/game/text?lang=english&count=50`
-2. Backend calls: `typingEngine.getRandomWords(50)`
-3. ArrayList is shuffled and 50 words extracted
-4. Words joined with spaces and returned to frontend
-
-#### Stack - Typing History Tracking
-
-**Location:** `useTypingEngine.js` (Frontend)
-
-```javascript
-// AOOP Req 2: Stack for tracking typed characters
-const [typedCharStack, setTypedCharStack] = useState([]);
-
-// Push to stack on each keystroke
-setTypedCharStack(prevStack => [
-  ...prevStack,
-  { type: isCorrect ? 'correct' : 'incorrect', char: key }
-]);
-
-// Pop from stack on backspace
-setTypedCharStack(prevStack => {
-  if (prevStack.length > 0) {
-    const lastTyped = prevStack[prevStack.length - 1];
-    // Update stats based on popped character
-    return prevStack.slice(0, -1); // Pop operation
-  }
-  return prevStack;
-});
-```
-
-**Stack - Auto-Indent Jump Tracking**
-
-**Location:** `useTypingEngine.js` (Code Mode)
-
-```javascript
-// AOOP Req 2: Stack for tracking auto-indent jumps
-const [indentJumpStack, setIndentJumpStack] = useState([]);
-
-// Push when auto-jumping indentation
-setIndentJumpStack(prevStack => [
-  ...prevStack, 
-  { type: 'indent', count: indentCount }
-]);
-
-// Pop when backspacing after jump
-setIndentJumpStack(prevStack => prevStack.slice(0, -1));
-```
-
-#### HashSet - Unique Words Tracking
-
-**Location:** `PracticeMode.java`
-
-```java
-public class PracticeMode {
-    // AOOP Req 2: Set for tracking unique words typed
-    private final Set<String> uniqueWordsTyped;
-    
-    public PracticeMode() {
-        this.uniqueWordsTyped = new HashSet<>();
-    }
-    
-    /**
-     * Record a correctly typed word
-     * Uses Set to track unique words (AOOP Req 2)
-     */
-    public void recordCorrectWord(String word) {
-        uniqueWordsTyped.add(word.toLowerCase());
-        currentWordIndex++;
-    }
-    
-    public int getUniqueWordCount() {
-        return uniqueWordsTyped.size();
-    }
-}
-```
-
-#### Queue - Upcoming Words Management
-
-**Location:** `PerformanceTracker.java`
-
-```java
-public class PerformanceTracker {
-    // AOOP Req 2: Queue for upcoming words
-    private final Queue<Word> upcomingWords;
-    
-    public PerformanceTracker() {
-        this.upcomingWords = new LinkedList<>();
-    }
-    
-    /**
-     * Add words to queue (AOOP Req 2)
-     */
-    public void addUpcomingWords(List<Word> words) {
-        upcomingWords.addAll(words);
-    }
-    
-    /**
-     * Get next word from queue (AOOP Req 2)
-     */
-    public Word getNextWord() {
-        return upcomingWords.poll(); // Dequeue operation
-    }
-}
-```
-
-### 3.2 File I/O Operations (Requirement 3)
-
-#### FileReader - Loading Code Snippets
-
-**Location:** `CodeSnippetLoader.java`
-
-```java
-/**
- * Load code snippet from file using FileReader (AOOP Req 3)
- */
-public String loadSnippet(String language, String filename) throws IOException {
-    String path = String.format("snippets/%s/%s", language, filename);
-    
-    try (InputStream is = getClass().getClassLoader().getResourceAsStream(path);
-         InputStreamReader isr = new InputStreamReader(is);
-         FileReader reader = new FileReader(file);  // AOOP Req 3
-         BufferedReader br = new BufferedReader(reader)) {
-        
-        StringBuilder content = new StringBuilder();
-        String line;
-        
-        while ((line = br.readLine()) != null) {
-            content.append(line).append("\n");
-        }
-        
-        return content.toString();
-    }
-}
-```
-
-**Snippet Files:**
-- `src/main/resources/snippets/java/BubbleSort.java`
-- `src/main/resources/snippets/java/HelloWorld.java`
-- `src/main/resources/snippets/java/LinkedList.java`
-
-#### ObjectOutputStream - Saving User Statistics
-
-**Location:** `ScoreManager.java`
-
-```java
-/**
- * Save UserStats to binary file using ObjectOutputStream (AOOP Req 3)
- */
-public void saveStats(UserStats stats) throws IOException {
-    try (ObjectOutputStream oos = new ObjectOutputStream(
-            new FileOutputStream(STATS_FILE))) {  // AOOP Req 3
-        
-        oos.writeObject(stats);  // Serialize UserStats object
-        System.out.println("[ScoreManager] Stats saved to scores.dat");
-    }
-}
-```
-
-**UserStats Class (Serializable):**
-
-```java
-public class UserStats implements Serializable {
-    private static final long serialVersionUID = 1L;
-    
+@Document(collection = "users")
+public class User {
+    @Id
+    private String id;
     private String username;
-    private double bestWPM;
-    private double averageWPM;
-    private double averageAccuracy;
+    private String email;
+    private String password;  // Plain text (educational project)
+    private LocalDateTime createdAt;
+    
+    // Statistics
     private int totalGames;
-    private List<GameRecord> gameHistory;  // ArrayList of game records
+    private double bestWPM;
+    private double avgWPM;
+    private int totalWins;
     
-    // Getters, setters, and methods
-}
-```
-
-**Data Flow:**
-1. Frontend completes test → sends stats to `POST /api/scores`
-2. Backend creates/updates `UserStats` object
-3. `ScoreManager.saveStats()` serializes to `scores.dat` using ObjectOutputStream
-4. File persists between application restarts
-
-#### ObjectInputStream - Loading User Statistics
-
-**Location:** `ScoreManager.java`
-
-```java
-/**
- * Load UserStats from binary file using ObjectInputStream (AOOP Req 3)
- */
-public UserStats loadStats() throws IOException, ClassNotFoundException {
-    try (ObjectInputStream ois = new ObjectInputStream(
-            new FileInputStream(STATS_FILE))) {  // AOOP Req 3
-        
-        UserStats stats = (UserStats) ois.readObject();  // Deserialize
-        System.out.println("[ScoreManager] Stats loaded from scores.dat");
-        return stats;
+    // Method to update stats after each game
+    public void updateStats(double wpm, boolean isWin) {
+        totalGames++;
+        if (wpm > bestWPM) bestWPM = wpm;
+        avgWPM = ((avgWPM * (totalGames - 1)) + wpm) / totalGames;
+        if (isWin) totalWins++;
     }
 }
 ```
 
-#### FileWriter - Exporting Match History
-
-**Location:** `ScoreManager.java`
-
+**GameRecord.java**
 ```java
-/**
- * Export match history to text file using FileWriter (AOOP Req 3)
- */
-public void exportMatchHistory(UserStats stats) throws IOException {
-    try (FileWriter writer = new FileWriter(MATCH_HISTORY_FILE);  // AOOP Req 3
-         BufferedWriter bw = new BufferedWriter(writer)) {
-        
-        bw.write("=== Match History for " + stats.getUsername() + " ===\n");
-        bw.write("Total Games: " + stats.getTotalGames() + "\n\n");
-        
-        for (GameRecord record : stats.getGameHistory()) {
-            bw.write(String.format("%s | WPM: %.1f | Accuracy: %.1f%%\n",
-                record.getTimestamp(), record.getWpm(), record.getAccuracy()));
-        }
-    }
+@Document(collection = "game_records")
+public class GameRecord {
+    @Id
+    private String id;
+    private String userId;
+    private String username;
+    private double wpm;
+    private double accuracy;
+    private int wordsTyped;
+    private String gameMode;  // PRACTICE, CODE, MULTIPLAYER
+    private long duration;
+    private LocalDateTime timestamp;
 }
 ```
 
-### 3.3 Threading (Requirement 4)
+#### Repositories
 
-#### Thread 1: Game Timer (Frontend)
-
-**Location:** `useTypingEngine.js`
-
-```javascript
-// Background thread for timer countdown (AOOP Req 4)
-useEffect(() => {
-  if (testType === 'time' && phase === 'typing' && timeRemaining > 0) {
-    const timerInterval = setInterval(() => {
-      setTimeRemaining(prev => prev - 1);
-    }, 1000);  // Runs every 1 second in background
-    
-    return () => clearInterval(timerInterval);  // Cleanup
-  }
-}, [testType, phase, timeRemaining]);
-```
-
-**Thread Behavior:**
-- Runs independently in background
-- Updates `timeRemaining` state every second
-- Triggers game end when timer reaches 0
-- Automatically cleaned up when component unmounts
-
-#### Thread 2: WPM Calculator (Frontend)
-
-**Location:** `useTypingEngine.js`
-
-```javascript
-// Background thread for WPM calculation (AOOP Req 4)
-useEffect(() => {
-  if (phase === "typing" && startTime) {
-    const interval = setInterval(() => {
-      const timeElapsed = (Date.now() - startTime) / 60000;
-      
-      // Calculate Net WPM
-      const netWordsTyped = charStats.correct / 5;
-      const currentNetWpm = Math.round(netWordsTyped / timeElapsed);
-      
-      // Calculate Raw WPM
-      const rawWordsTyped = totalTyped / 5;
-      const currentRawWpm = Math.round(rawWordsTyped / timeElapsed);
-      
-      setWpm(currentNetWpm);
-      setRawWpm(currentRawWpm);
-      setWpmHistory(prev => [...prev, currentNetWpm]);  // For graph
-    }, 1000);  // Updates every 1 second
-    
-    return () => clearInterval(interval);
-  }
-}, [userInput, startTime, phase, charStats, totalTyped]);
-```
-
-**Thread Behavior:**
-- Calculates WPM every second
-- Captures WPM snapshots for result graph
-- Runs concurrently with typing and timer threads
-
-### 3.4 Socket Programming (Requirement 5)
-
-#### Java Socket Server - Multiplayer Game
-
-**Location:** `GameServer.java`
-
+**UserRepository.java**
 ```java
-/**
- * Multiplayer game server using Java Sockets (AOOP Req 5)
- */
-public class GameServer {
-    private static final int PORT = 9090;
-    private ServerSocket serverSocket;
-    private List<ClientHandler> clients = new ArrayList<>();
-    
-    public void start() throws IOException {
-        serverSocket = new ServerSocket(PORT);
-        System.out.println("[GameServer] Listening on port " + PORT);
-        
-        // Accept client connections (AOOP Req 5: Socket Programming)
-        while (true) {
-            Socket clientSocket = serverSocket.accept();
-            System.out.println("[GameServer] New client connected");
-            
-            // Create thread for each client (AOOP Req 4: Threading)
-            ClientHandler handler = new ClientHandler(clientSocket, this);
-            clients.add(handler);
-            new Thread(handler).start();
-        }
-    }
+public interface UserRepository extends MongoRepository<User, String> {
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
 }
 ```
 
-#### ClientHandler - Thread-Per-Client Model
-
-**Location:** `ClientHandler.java`
-
+**GameRecordRepository.java**
 ```java
-/**
- * Handles individual client connection (AOOP Req 4: Threading + Req 5: Sockets)
- */
-public class ClientHandler implements Runnable {
-    private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
-    private GameServer server;
-    
-    @Override
-    public void run() {
-        try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
-            
-            String message;
-            while ((message = in.readLine()) != null) {
-                // Parse JSON message
-                GameMessage msg = parseMessage(message);
-                
-                // Broadcast to other players
-                server.broadcast(msg, this);
-            }
-        } catch (IOException e) {
-            System.err.println("[ClientHandler] Connection error: " + e.getMessage());
-        }
+public interface GameRecordRepository extends MongoRepository<GameRecord, String> {
+    List<GameRecord> findByUserIdOrderByTimestampDesc(String userId);
+    List<GameRecord> findTop20ByUserIdOrderByTimestampDesc(String userId);
+}
+```
+
+#### Services
+
+**AuthService.java**
+- Handles user registration and login
+- Validates username/email uniqueness
+- Simple password comparison (no hashing for simplicity)
+- Returns user data on success
+
+#### REST Controllers
+
+**AuthController.java**
+- `POST /api/auth/signup` - Create new user
+- `POST /api/auth/login` - Authenticate user
+
+**ProfileController.java**
+- `GET /api/profile/{username}` - Get user profile
+- `GET /api/profile/{username}/history` - Get game history
+
+**TypingController.java**
+- `GET /api/game/text` - Get random words
+- `POST /api/scores` - Save game score
+  - Creates GameRecord
+  - Updates User statistics
+  - Saves to MongoDB
+
+**GameWebSocketController.java**
+- `@MessageMapping("/game/join")` - Player joins room
+- `@MessageMapping("/game/progress")` - Player progress update
+- `@SendTo("/topic/game")` - Broadcast to all players
+
+### Database (MongoDB)
+
+#### Collections
+
+**users**
+```javascript
+{
+  _id: ObjectId("..."),
+  username: "speedtyper",
+  email: "speed@example.com",
+  password: "mypassword",
+  createdAt: ISODate("2026-01-26T12:00:00Z"),
+  totalGames: 15,
+  bestWPM: 95.5,
+  avgWPM: 78.3,
+  totalWins: 5
+}
+```
+
+**game_records**
+```javascript
+{
+  _id: ObjectId("..."),
+  userId: "507f1f77bcf86cd799439011",
+  username: "speedtyper",
+  wpm: 85.2,
+  accuracy: 96.5,
+  wordsTyped: 50,
+  gameMode: "MULTIPLAYER",
+  duration: 35000,
+  timestamp: ISODate("2026-01-26T12:30:00Z")
+}
+```
+
+#### Why MongoDB?
+- **Flexible schema**: Easy to add new fields
+- **Fast queries**: Great for real-time stats
+- **JSON-like documents**: Works well with JavaScript frontend
+- **No complex joins**: Simple data structure
+
+### WebSocket Communication
+
+#### Message Types
+
+**PLAYER_JOIN**
+```json
+{
+  "type": "PLAYER_JOIN",
+  "username": "speedtyper",
+  "roomId": "room_1"
+}
+```
+
+**PLAYER_UPDATE** (Progress)
+```json
+{
+  "type": "PLAYER_UPDATE",
+  "players": [
+    {
+      "username": "speedtyper",
+      "wpm": 75,
+      "progress": 45
+    },
+    {
+      "username": "Guest_123",
+      "wpm": 68,
+      "progress": 38
     }
+  ]
 }
 ```
 
-#### Socket-to-WebSocket Bridge
-
-**Architecture:**
-
-```
-┌─────────────┐                    ┌──────────────┐
-│   Browser   │ ←─── WebSocket ───→│ Spring Boot  │
-│  (React)    │                    │   Backend    │
-└─────────────┘                    └──────────────┘
-                                           ↕
-                                    Java Socket
-                                           ↕
-                                   ┌──────────────┐
-                                   │ GameServer   │
-                                   │ (Port 9090)  │
-                                   └──────────────┘
-```
-
-**WebSocket Controller:**
-
-```java
-@Controller
-public class GameWebSocketController {
-    @MessageMapping("/game/progress")
-    @SendTo("/topic/game")
-    public GameMessage handleProgress(GameMessage message) {
-        // Receive from WebSocket, forward to Socket server
-        socketClient.send(message);
-        return message;
-    }
+**GAME_START**
+```json
+{
+  "type": "GAME_START",
+  "text": "the quick brown fox jumps over the lazy dog",
+  "roomId": "room_1"
 }
 ```
 
----
-
-## 4. Data Flow & Statistics
-
-### 4.1 WPM Calculation Formulas
-
-#### Net WPM (Displayed WPM)
-
-**Formula:**
-```
-Net WPM = (Correct Characters / 5) / Time in Minutes
-```
-
-**Implementation:**
-```javascript
-const timeElapsed = (Date.now() - startTime) / 60000;  // Convert ms to minutes
-const netWordsTyped = charStats.correct / 5;  // 5 characters = 1 word
-const currentNetWpm = Math.round(netWordsTyped / timeElapsed);
-```
-
-**Example:**
-- Correct characters: 250
-- Time elapsed: 60 seconds (1 minute)
-- Net WPM = (250 / 5) / 1 = **50 WPM**
-
-#### Raw WPM (Includes Errors)
-
-**Formula:**
-```
-Raw WPM = (Total Keystrokes / 5) / Time in Minutes
-```
-
-**Implementation:**
-```javascript
-const rawWordsTyped = totalTyped / 5;  // All keystrokes including errors
-const currentRawWpm = Math.round(rawWordsTyped / timeElapsed);
-```
-
-**Example:**
-- Total keystrokes: 300 (includes 50 errors)
-- Time elapsed: 60 seconds (1 minute)
-- Raw WPM = (300 / 5) / 1 = **60 WPM**
-
-**Relationship:**
-```
-Raw WPM ≥ Net WPM
-Difference = Error penalty
-```
-
-### 4.2 Accuracy Calculation
-
-**Formula:**
-```
-Accuracy = (Correct Characters / Total Keystrokes) × 100%
-```
-
-**Implementation:**
-```javascript
-const accuracy = totalTyped > 0
-  ? Math.min(100, (charStats.correct / totalTyped) * 100)
-  : 100;
-```
-
-**Example:**
-- Correct characters: 250
-- Total keystrokes: 300
-- Accuracy = (250 / 300) × 100 = **83.33%**
-
-**Edge Cases:**
-- No keystrokes: Accuracy = 100% (default)
-- Perfect typing: Accuracy = 100% (capped)
-
-### 4.3 Character Statistics Breakdown
-
-```javascript
-charStats = {
-  correct: 250,    // Typed correctly
-  incorrect: 40,   // Typed incorrectly
-  missed: 10,      // Skipped by pressing space early
-  extra: 0         // Typed beyond text length (removed in current version)
+**GAME_FINISH**
+```json
+{
+  "type": "GAME_FINISH",
+  "winner": "speedtyper",
+  "wpm": 95.5,
+  "accuracy": 98.2
 }
-
-// Validation:
-totalTyped = correct + incorrect + missed + extra
 ```
 
-### 4.4 Second-by-Second Performance Capture
+### Data Flow Example
 
-**Data Structure:**
-```javascript
-wpmHistory = [0, 12, 24, 35, 42, 48, 50, 51, 50, 49]
-//           [0s, 1s, 2s, 3s, 4s, 5s, 6s, 7s, 8s, 9s]
-```
+#### Complete Game Flow (Logged-in User)
 
-**Capture Mechanism:**
-```javascript
-// WPM calculator runs every 1 second
-const interval = setInterval(() => {
-  const currentNetWpm = calculateNetWPM();
-  
-  // Append to history array for graph
-  setWpmHistory(prev => [...prev, currentNetWpm]);
-}, 1000);
-```
+1. **User logs in**
+   - Frontend: `authService.login("john", "pass123")`
+   - Backend: `POST /api/auth/login`
+   - MongoDB: Query users collection
+   - Response: User data
+   - Frontend: Save to localStorage
 
-**Graph Rendering:**
+2. **User starts practice mode**
+   - Frontend: Select "time 30"
+   - Frontend: Request text from backend
+   - Backend: `GET /api/game/text?count=50`
+   - Backend: Return random words
+   - Frontend: Display text, start timer
 
-The `wpmHistory` array is passed to `ResultScreen.jsx` which uses **Recharts** to visualize performance:
+3. **User types**
+   - Every keystroke updates character states
+   - WPM calculated every 200ms
+   - Accuracy updated in real-time
+   - Timer counts down
 
-```jsx
-<LineChart data={wpmHistory.map((wpm, index) => ({ second: index, wpm }))}>
-  <XAxis dataKey="second" label="Time (seconds)" />
-  <YAxis label="WPM" />
-  <Line type="monotone" dataKey="wpm" stroke="#facc15" />
-</LineChart>
-```
+4. **Timer reaches 0**
+   - Phase changes to "finished"
+   - Result screen appears
+   - Score sent to backend automatically
 
-**Graph Features:**
-- X-axis: Time in seconds
-- Y-axis: WPM value
-- Shows performance fluctuation over time
-- Helps identify consistency and peak performance
+5. **Score saving**
+   - Frontend: `POST /api/scores` with user data
+   - Backend: Create GameRecord in MongoDB
+   - Backend: Update User statistics
+   - Backend: Save both documents
+   - Frontend: Console log "Stats saved"
 
-### 4.5 Result Screen Data Flow
+6. **User views profile**
+   - Frontend: Navigate to `/profile`
+   - Frontend: `GET /api/profile/john`
+   - Backend: Query users collection
+   - Response: User stats
+   - Frontend: Display statistics
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    useTypingEngine.js                       │
-│  - Tracks: wpm, rawWpm, accuracy, charStats, wpmHistory    │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                    phase === 'finished'
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                     TypingArea.jsx                          │
-│  Renders: <ResultScreen                                    │
-│    wpm={wpm}                                                │
-│    rawWpm={rawWpm}                                          │
-│    accuracy={accuracy}                                      │
-│    testType={`${testType} ${testValue}`}                   │
-│    characters={charStats}                                   │
-│    wpmHistory={wpmHistory}                                  │
-│  />                                                         │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    ResultScreen.jsx                         │
-│  Displays:                                                  │
-│  - WPM (large, prominent)                                   │
-│  - Raw WPM (smaller, secondary)                             │
-│  - Accuracy percentage                                      │
-│  - Test type ("time 30" or "words 50")                      │
-│  - Character breakdown (correct/incorrect/missed)           │
-│  - WPM graph (Recharts LineChart)                           │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                    POST /api/scores
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  ScoreManager.java                          │
-│  - Saves to scores.dat via ObjectOutputStream              │
-│  - Updates UserStats (best WPM, average, history)          │
-└─────────────────────────────────────────────────────────────┘
-```
+7. **User views history**
+   - Frontend: `GET /api/profile/john/history`
+   - Backend: Query game_records collection
+   - Backend: Sort by timestamp, limit 20
+   - Response: Array of game records
+   - Frontend: Display in table
 
 ---
 
 ## 5. Setup & Running
 
-### 5.1 Prerequisites
+### Prerequisites
 
-Ensure you have the following installed:
+1. **Java 17 or higher**
+   - Check: `java -version`
+   - Download: https://www.oracle.com/java/technologies/downloads/
 
-- **Java 17+** - `java -version`
-- **Maven 3.9+** - `mvn -version`
-- **Node.js 18+** - `node -v`
-- **npm 9+** - `npm -v`
+2. **Node.js 16 or higher**
+   - Check: `node -v`
+   - Download: https://nodejs.org/
 
-### 5.2 Installation Steps
+3. **MongoDB**
+   - Download: https://www.mongodb.com/try/download/community
+   - Or use Docker: `docker run -d -p 27017:27017 mongo`
 
-#### Step 1: Clone Repository
+4. **Maven** (usually comes with Java)
+   - Check: `mvn -v`
+
+### Installation Steps
+
+#### 1. Start MongoDB
+
+**Option A: Local MongoDB**
 ```bash
-git clone <repository-url>
-cd Fast-Fingers
+# Windows
+mongod
+
+# Mac/Linux
+sudo systemctl start mongod
 ```
 
-#### Step 2: Backend Setup
+**Option B: Docker**
 ```bash
-# Navigate to backend directory
-cd backend
+docker run -d -p 27017:27017 --name mongodb mongo
+```
 
-# Install dependencies and compile
+**Verify MongoDB is running:**
+```bash
+mongo --eval "db.version()"
+```
+
+#### 2. Start Backend (Spring Boot)
+
+```bash
+# Navigate to project root
+cd C:\Users\Administrator\Desktop\Fast-Fingers
+
+# Install dependencies and build
 mvn clean install
 
-# Verify installation
-mvn dependency:tree
+# Run the application
+mvn spring-boot:run
 ```
 
-#### Step 3: Frontend Setup
-```bash
-# Navigate to frontend directory
-cd ../frontend
+**Backend will start on:** `http://localhost:8080`
 
-# Install dependencies
+**Check if it's running:**
+- Open browser: `http://localhost:8080/api/game/text?count=10`
+- Should see random words
+
+#### 3. Start Frontend (React)
+
+```bash
+# Navigate to frontend folder
+cd frontend
+
+# Install dependencies (first time only)
 npm install
 
-# Verify installation
-npm list
-```
-
-### 5.3 Running the Application
-
-#### Option 1: Development Mode (Recommended)
-
-**Terminal 1 - Backend Server:**
-```bash
-cd backend
-mvn spring-boot:run
-```
-✅ Backend running on: `http://localhost:8080`
-
-**Terminal 2 - Frontend Server:**
-```bash
-cd frontend
+# Start development server
 npm run dev
 ```
-✅ Frontend running on: `http://localhost:5173`
 
-**Access Application:** Open browser to `http://localhost:5173`
+**Frontend will start on:** `http://localhost:5173`
 
-#### Option 2: Production Build
+**Open in browser:** `http://localhost:5173`
 
-**Build Frontend:**
-```bash
-cd frontend
-npm run build
-# Creates optimized build in frontend/dist
-```
+### Testing the Application
 
-**Run Backend (serves frontend):**
-```bash
-cd backend
-mvn spring-boot:run
-```
-✅ Application running on: `http://localhost:8080`
-
-### 5.4 Running Multiplayer Server (Optional)
-
-**Start Socket Server:**
-```bash
-cd backend
-mvn exec:java -Dexec.mainClass="com.typinggame.network.GameServer"
-```
-✅ Socket server listening on: `ws://localhost:9090`
-
-**Connect Clients:**
-- Open multiple browser tabs to `http://localhost:5173`
-- Click "MULTIPLAYER" button
-- Enter room code to join match
-
-### 5.5 Verifying Installation
-
-#### Test Backend API:
-```bash
-# Test word retrieval
-curl http://localhost:8080/api/game/text?lang=english&count=10
-
-# Test code snippet
-curl http://localhost:8080/api/game/text?lang=java
-```
-
-#### Test Frontend:
+#### Test 1: Guest Mode
 1. Open `http://localhost:5173`
-2. Click typing area to focus
-3. Start typing
-4. Verify WPM updates in real-time
-5. Press Tab to restart
+2. Click "Continue as Guest" (or just start typing)
+3. Type the words shown
+4. See your WPM update in real-time
+5. Complete the test
+6. View results screen
 
-### 5.6 Project Structure Reference
+#### Test 2: Create Account
+1. Click user icon (top right)
+2. Click "Sign Up" tab
+3. Enter username, email, password
+4. Click "Register"
+5. Should redirect to home page
+
+#### Test 3: Play and Save Score
+1. Make sure you're logged in
+2. Play a typing game
+3. Complete the test
+4. Open browser console (F12)
+5. Should see: "Stats saved to MongoDB for [username]"
+
+#### Test 4: View Profile
+1. Click user icon (top right)
+2. Should go to profile page
+3. See your statistics (WPM, games played, etc.)
+4. See game history table
+
+#### Test 5: Multiplayer
+1. Navigate to `http://localhost:5173/room`
+2. Open another browser tab (or incognito window)
+3. Also navigate to `/room`
+4. Both should connect to "room_1"
+5. Game starts when 2 players join
+6. Type and race!
+7. See ghost carets moving
+
+#### Test 6: MongoDB Verification
+1. Open MongoDB Compass
+2. Connect to `mongodb://localhost:27017`
+3. Open `fastfingers` database
+4. Check `users` collection - see your account
+5. Check `game_records` collection - see your games
+
+### Common Issues
+
+#### MongoDB not connecting
+**Error:** `Connection refused`
+**Solution:**
+```bash
+# Check if MongoDB is running
+mongo --eval "db.version()"
+
+# If not, start it
+mongod
+```
+
+#### Backend won't start
+**Error:** `Port 8080 already in use`
+**Solution:**
+```bash
+# Find process using port 8080
+netstat -ano | findstr :8080
+
+# Kill the process (Windows)
+taskkill /PID <process_id> /F
+```
+
+#### Frontend won't start
+**Error:** `EADDRINUSE: address already in use`
+**Solution:**
+```bash
+# Kill process on port 5173
+npx kill-port 5173
+
+# Or use a different port
+npm run dev -- --port 3000
+```
+
+#### Scores not saving
+**Check:**
+1. MongoDB is running
+2. Backend console shows "Stats saved to MongoDB"
+3. User is logged in (not guest)
+4. Browser console for errors
+
+### Project Structure
 
 ```
 Fast-Fingers/
-├── backend/
-│   ├── src/main/java/com/typinggame/
-│   │   ├── api/
-│   │   │   └── TypingController.java      # REST endpoints
-│   │   ├── engine/
-│   │   │   ├── TypingEngine.java          # Word bank (ArrayList)
-│   │   │   └── PerformanceTracker.java    # Stack/Queue/Set
-│   │   ├── io/
-│   │   │   ├── ScoreManager.java          # ObjectOutputStream/InputStream
-│   │   │   └── CodeSnippetLoader.java     # FileReader
-│   │   ├── network/
-│   │   │   ├── GameServer.java            # Socket server
-│   │   │   └── ClientHandler.java         # Thread-per-client
-│   │   └── websocket/
-│   │       └── GameWebSocketController.java
-│   └── pom.xml
-│
+├── src/main/java/com/typinggame/
+│   ├── domain/
+│   │   ├── User.java                    # User model
+│   │   └── GameRecord.java              # Game record model
+│   ├── repository/
+│   │   ├── UserRepository.java          # User database queries
+│   │   └── GameRecordRepository.java    # Game record queries
+│   ├── service/
+│   │   └── AuthService.java             # Authentication logic
+│   ├── api/
+│   │   ├── AuthController.java          # Login/signup endpoints
+│   │   ├── ProfileController.java       # Profile endpoints
+│   │   ├── TypingController.java        # Game endpoints
+│   │   └── GameWebSocketController.java # Multiplayer WebSocket
+│   └── TypingGameApplication.java       # Main application
+├── src/main/resources/
+│   └── application.properties           # MongoDB configuration
 ├── frontend/
 │   ├── src/
+│   │   ├── components/
+│   │   │   ├── game/
+│   │   │   │   ├── TypingArea.jsx       # Main typing component
+│   │   │   │   ├── MultiplayerArea.jsx  # Multiplayer component
+│   │   │   │   ├── ResultScreen.jsx     # Results display
+│   │   │   │   ├── GhostCaret.jsx       # Ghost caret component
+│   │   │   │   └── ProgressBar.jsx      # Race progress bar
+│   │   │   └── layout/
+│   │   │       └── Navbar.jsx           # Navigation bar
+│   │   ├── pages/
+│   │   │   ├── HomePage.jsx             # Main page
+│   │   │   ├── Login.jsx                # Login/signup page
+│   │   │   ├── ProfilePage.jsx          # User profile page
+│   │   │   └── GameRoom.jsx             # Multiplayer room
 │   │   ├── hooks/
-│   │   │   ├── useTypingEngine.js         # Core typing logic
-│   │   │   └── useGameConfig.js           # Mode configuration
-│   │   ├── components/game/
-│   │   │   ├── TypingArea.jsx             # Main game component
-│   │   │   ├── ResultScreen.jsx           # Results display
-│   │   │   └── ModeToolbar.jsx            # Mode selection
-│   │   └── App.jsx
-│   └── package.json
-│
-└── README.md
+│   │   │   ├── useTypingEngine.js       # Typing logic
+│   │   │   ├── useGameSocket.js         # WebSocket logic
+│   │   │   └── useGameConfig.js         # Game settings
+│   │   ├── services/
+│   │   │   ├── authService.js           # Auth utilities
+│   │   │   └── api.js                   # API client
+│   │   ├── App.jsx                      # Main app component
+│   │   └── main.jsx                     # Entry point
+│   └── package.json                     # Dependencies
+├── pom.xml                              # Maven dependencies
+└── PROJECT_GUIDE.md                     # This file!
 ```
 
 ---
 
-## 📊 Key Metrics Summary
+## Summary
 
-| Metric | Formula | Purpose |
-|--------|---------|---------|
-| **Net WPM** | `(Correct Chars / 5) / Minutes` | Effective typing speed |
-| **Raw WPM** | `(Total Keystrokes / 5) / Minutes` | Total typing effort |
-| **Accuracy** | `(Correct / Total) × 100%` | Typing precision |
-| **Missed Chars** | Count when space pressed early | Word skip penalty |
+FastFingers is a complete typing game with:
+- ✅ **Multiple game modes**: Practice (time/words), Code, Multiplayer
+- ✅ **User accounts**: Sign up, login, guest mode
+- ✅ **Real-time stats**: WPM updates every 200ms, live accuracy
+- ✅ **Data persistence**: MongoDB stores users and game history
+- ✅ **Multiplayer racing**: Real-time races with ghost carets
+- ✅ **Profile system**: View stats and game history
+- ✅ **Smart features**: Auto-indent in code mode, smooth animations
+- ✅ **Modern UI**: Dark theme, responsive design, visual feedback
 
----
+The project demonstrates:
+- Full-stack development (React + Spring Boot)
+- NoSQL database integration (MongoDB)
+- Real-time communication (WebSocket)
+- State management and hooks (React)
+- RESTful API design
+- User authentication
+- Data persistence and statistics tracking
 
-## 🎓 AOOP Requirements Checklist
-
-- ✅ **Req 1:** Inheritance & Polymorphism - `Word implements Comparable<Word>`
-- ✅ **Req 2:** Collections - ArrayList (word bank), Stack (backspace), HashSet (unique words), Queue (upcoming words)
-- ✅ **Req 3:** File I/O - FileReader (snippets), ObjectOutputStream (stats), ObjectInputStream (load stats), FileWriter (history)
-- ✅ **Req 4:** Threading - Timer thread, WPM calculator thread, ClientHandler threads
-- ✅ **Req 5:** Socket Programming - GameServer, ClientHandler, Socket-to-WebSocket bridge
-
----
-
-**Happy Typing! ⌨️**
+**Built with ❤️ for typing enthusiasts and developers!**

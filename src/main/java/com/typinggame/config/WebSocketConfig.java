@@ -26,9 +26,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Register STOMP endpoint matching frontend expectation
+        // Native WebSocket endpoint (recommended for @stomp/stompjs brokerURL)
+        registry.addEndpoint("/fastfingers-ws-native")
+                .setAllowedOrigins("http://localhost:5173", "http://localhost:3000");
+
+        // SockJS endpoint (fallback transport). Kept for compatibility.
         registry.addEndpoint("/fastfingers-ws")
                 .setAllowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .withSockJS(); // Enable SockJS fallback for browsers without WebSocket support
+                .withSockJS();
     }
 }

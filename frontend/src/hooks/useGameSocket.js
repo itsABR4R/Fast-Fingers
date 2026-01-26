@@ -5,6 +5,8 @@ const useGameSocket = (roomId, username) => {
   const [messages, setMessages] = useState([]);
   const [players, setPlayers] = useState([]); // List of { username, progress, status }
   const [isConnected, setIsConnected] = useState(false);
+  const [startText, setStartText] = useState(null);
+  const [winner, setWinner] = useState(null);
   
   const clientRef = useRef(null);
 
@@ -28,16 +30,21 @@ const useGameSocket = (roomId, username) => {
       // Listen for Game Updates (Progress, Elimination)
       client.subscribe(`/topic/game/${roomId}`, (message) => {
         const data = JSON.parse(message.body);
-        
+
+        if (data.type === 'START') {
+          setStartText(data.text);
+          setWinner(null);
+        }
+
         if (data.type === 'PLAYER_UPDATE') {
-          setPlayers(prev => {
-            // Update existing player or add new one
-            const exists = prev.find(p => p.username === data.username);
-            if (exists) {
-              return prev.map(p => p.username === data.username ? { ...p, ...data } : p);
-            }
-            return [...prev, data];
-          });
+          // Backend sends: { type: 'PLAYER_UPDATE', players: [...] }
+          if (Array.isArray(data.players)) {
+            setPlayers(data.players);
+          }
+        }
+
+        if (data.type === 'FINISH') {
+          setWinner(data.winner);
         }
       });
 
@@ -70,6 +77,15 @@ const useGameSocket = (roomId, username) => {
     }
   };
 
+  const sendFinish = ({ wpm, accuracy, wordsTyped, duration }) => {
+    if (clientRef.current?.connected) {
+      clientRef.current.publish({
+        destination: `/app/finish/${roomId}`,
+        body: JSON.stringify({ username, wpm, accuracy, wordsTyped, duration })
+      });
+    }
+  };
+
   const sendChat = (text) => {
     if (clientRef.current?.connected) {
       clientRef.current.publish({
@@ -79,7 +95,7 @@ const useGameSocket = (roomId, username) => {
     }
   };
 
-  return { isConnected, players, messages, sendProgress, sendChat };
+  return { isConnected, players, messages, startText, winner, sendProgress, sendFinish, sendChat };
 };
 
 export default useGameSocket;

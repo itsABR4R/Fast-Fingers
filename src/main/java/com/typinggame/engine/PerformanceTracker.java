@@ -166,8 +166,11 @@ public class PerformanceTracker {
      * Refill the upcoming words queue if it's running low.
      */
     public void refillUpcomingWords(List<Word> newWords) {
-        while (upcomingWords.size() < 10 && !newWords.isEmpty()) {
-            upcomingWords.offer(newWords.remove(0));
+        // Do not mutate the input list (it may be unmodifiable, e.g., List.of / Arrays.asList).
+        int i = 0;
+        while (upcomingWords.size() < 10 && i < newWords.size()) {
+            upcomingWords.offer(newWords.get(i));
+            i++;
         }
     }
 
